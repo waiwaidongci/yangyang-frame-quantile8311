@@ -33,13 +33,20 @@ API 默认绑定 `127.0.0.1:19434`，PostgreSQL 16 绑定 `127.0.0.1:17934`。�
 | `GET /api/runs/{id}` | 查询 worker 状态及结果。完成后返回 `result.summary`、`metrics`、`tables`、`warnings` |
 | `POST /api/runs/{id}/review` | 负责人在计算完成后提交 `decision` 和 `note`，通过取值 `approved` |
 | `GET /api/runs/{id}/export/{key}` | 下载对应的 UTF-8 CSV，需运行已获批准 |
+| `POST /api/runs/{id}/confirmations` | JSON `shot_id`、`version`、`occlusion_low`、`occlusion_high`、`rig_low`、`rig_high`。复核范围须落在台账范围内且只收窄；乱序到达按最高 `version` 生效，返回重排后的工时单 |
+| `GET /api/runs/{id}/confirmations` | 该运行的复核记录列表 |
+| `POST /api/runs/{id}/locks` | JSON `shot_id`、`start_minute`、`finish_minute`。锁定工位时段：不与其他锁定重叠、须赶上该镜头交接并在下班前收工，返回重排后的工时单 |
+| `GET /api/runs/{id}/locks` | 该运行的锁定列表 |
+| `GET /api/runs/{id}/schedule` | 按最新复核重排的交接工时单：已锁定时段原样交接，未锁定镜头按生效范围重排 |
 
 | 可导出表 `key` | 内容 |
 |---|---|
-| `shift_queue` | 待排镜头的 P50/P90、时限、预留分钟、预排起止和顺延原因 |
+| `shift_queue` | 待排镜头的范围上下限、P50/P90、时限、预留分钟、预排起止和顺延原因 |
 | `holdout_metrics` | 全部留出和分场次的模型及常量 Pinball、覆盖率 |
 | `holdout_shots` | 留出镜头的输入、P50/P90 和实测工时 |
 | `scene_manifest` | 历史、留出、待排场次及各自镜头数 |
 | `model_profile` | 本次固定的提升参数、班次容量和训练常量分位 |
+
+待排镜头的 `occlusion_pct`、`rig_marks` 在量准前可在台账中填 `下限-上限` 范围（如 `40-60`），工时单按范围内模型能给出的最高 P90 向上取整预留。复核登记只收窄范围，乱序到达的确认按最高版本生效后重排未锁定镜头；已锁定时段原样交接。复核与锁定按运行串行，同一工位时段只排一个镜头，排完仍须赶上各自交接并在下班前收工。
 
 `backend/src/domain/` 提供确定性的 Python 模型、校验和报告。路由位于 `backend/src/routes/`，工作流位于 `backend/src/services/`。JWT 用户角色、运行状态与审批决定由 `backend/src/constants/workflow.py` 定义，分别用于鉴权、worker 领取与轮询、结果可见性和导出。领域模型使用 Python 标准库。

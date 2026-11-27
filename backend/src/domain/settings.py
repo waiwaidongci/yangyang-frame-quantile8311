@@ -8,8 +8,10 @@ FIELDS = {
     "split": "样本用途",
     "frames": "需擦线帧数",
     "occlusion_pct": "道具与角色遮挡比例（%）",
+    "occlusion_pct_high": "道具与角色遮挡比例上限（%）",
     "overlapping_characters": "同帧最多交叠角色数",
     "rig_marks": "平均每帧支架与吊线痕迹数",
+    "rig_marks_high": "平均每帧支架与吊线痕迹数上限",
     "due_minutes": "开班至审片交接的分钟数",
     "actual_minutes": "实测擦线工时（分钟）",
 }
@@ -29,8 +31,10 @@ SPEC = {
         "runs": "分位回归运行",
         "results": "场次留出与工时单",
         "reviews": "审片交接复核",
+        "schedule": "范围复核与工位锁定重排",
     },
     "limitation": "覆盖率来自本次留出场次。交接工时单按单工位、无切换损耗执行预排。",
+    "range_note": "待排镜头的遮挡比例与支架痕迹可填 下限-上限 范围；复核只收窄范围，工时单按范围内最高 P90 预留。",
     "dataset_name": "20261125-擦线镜头交班.csv",
     "recommendation": "核对场次留出的 P90 覆盖率，再按交接工时单复核本班可排与顺延镜头。",
 }

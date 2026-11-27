@@ -1,6 +1,6 @@
 """Application entry points for the shot ledger and the background worker."""
 
-from .boosting import QUANTILES, fit_quantile, predict_shot, shot_features
+from .boosting import QUANTILES, fit_quantile, model_to_dict, predict_shot, shot_features
 from .evaluation import holdout_comparison
 from .fixtures import demo_rows
 from .records import normalize_rows
@@ -56,4 +56,5 @@ def analyze(rows: list[dict], settings: dict) -> dict:
         "tables": [queue, pinball_table(comparison), holdout_shots(holdout), scene_manifest(records),
                    model_profile(options, baselines)],
         "warnings": warnings,
+        "models": {"p50": model_to_dict(p50), "p90": model_to_dict(p90)},
     }

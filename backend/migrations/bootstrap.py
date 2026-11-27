@@ -1,5 +1,5 @@
 from src.config.database import Base, engine
-from src.models import account, audit, dataset, review, run  # noqa: F401
+from src.models import account, audit, confirmation, dataset, review, run, slot_lock  # noqa: F401
 
 
 def bootstrap():

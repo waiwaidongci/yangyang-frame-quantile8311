@@ -29,6 +29,20 @@ class Branch:
 Tree = Leaf | Branch
 
 
+def tree_to_dict(tree: Tree) -> dict:
+    if isinstance(tree, Leaf):
+        return {"leaf": tree.correction}
+    return {"feature": tree.feature, "threshold": tree.threshold,
+            "left": tree_to_dict(tree.left), "right": tree_to_dict(tree.right)}
+
+
+def tree_from_dict(data: dict) -> Tree:
+    if "leaf" in data:
+        return Leaf(data["leaf"])
+    return Branch(data["feature"], data["threshold"],
+                  tree_from_dict(data["left"]), tree_from_dict(data["right"]))
+
+
 def best_partition(features: Sequence[Vector], gradients: Sequence[float],
                    members: list[int], min_leaf: int) -> tuple[int, float, list[int], list[int]] | None:
     """Find the maximal reduction in gradient squared error via prefix sums."""

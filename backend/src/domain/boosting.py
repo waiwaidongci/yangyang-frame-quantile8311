@@ -2,15 +2,26 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from itertools import product
 
 from .settings import FEATURES
-from .trees import Tree, Vector, fit_tree
+from .trees import Branch, Tree, Vector, fit_tree, tree_from_dict, tree_to_dict
 
 QUANTILES = (50, 90)
 
 
 def shot_features(row: dict) -> Vector:
     return tuple(row[field] for field in FEATURES)
+
+
+def feature_boxes(row: dict) -> tuple[tuple[float, float], ...]:
+    """Per-feature (lower, upper) bounds; exactly measured features collapse to a point."""
+    return (
+        (row["frames"], row["frames"]),
+        (row["occlusion_pct"], row.get("occlusion_pct_high", row["occlusion_pct"])),
+        (row["overlapping_characters"], row["overlapping_characters"]),
+        (row["rig_marks"], row.get("rig_marks_high", row["rig_marks"])),
+    )
 
 
 def empirical_quantile(values: Sequence[float], percentile: int) -> float:
@@ -31,6 +42,40 @@ class QuantileModel:
         for tree in self.trees:
             prediction += self.rate * tree.predict(features)
         return prediction
+
+
+def split_thresholds(tree: Tree, feature: int) -> set[float]:
+    if isinstance(tree, Branch):
+        cuts = split_thresholds(tree.left, feature) | split_thresholds(tree.right, feature)
+        return cuts | {tree.threshold} if tree.feature == feature else cuts
+    return set()
+
+
+def model_max(model: QuantileModel, boxes: tuple[tuple[float, float], ...]) -> float:
+    """Exact maximum of the piecewise-constant ensemble over an axis-aligned box."""
+    axes = []
+    for feature, (lower, upper) in enumerate(boxes):
+        if lower == upper:
+            axes.append([lower])
+            continue
+        cuts = set()
+        for tree in model.trees:
+            cuts |= split_thresholds(tree, feature)
+        bounds = [lower, *sorted(cut for cut in cuts if lower < cut < upper), upper]
+        points = {lower, upper}
+        points.update((left + right) / 2 for left, right in zip(bounds, bounds[1:]))
+        axes.append(sorted(points))
+    return max(model.predict(vector) for vector in product(*axes))
+
+
+def model_to_dict(model: QuantileModel) -> dict:
+    return {"constant": model.constant, "rate": model.rate,
+            "trees": [tree_to_dict(tree) for tree in model.trees]}
+
+
+def model_from_dict(data: dict) -> QuantileModel:
+    return QuantileModel(data["constant"], data["rate"],
+                         tuple(tree_from_dict(tree) for tree in data["trees"]))
 
 
 def fit_quantile(features: Sequence[Vector], actual: Sequence[float], percentile: int,
@@ -55,8 +100,9 @@ def fit_quantile(features: Sequence[Vector], actual: Sequence[float], percentile
 
 
 def predict_shot(row: dict, models: tuple[QuantileModel, QuantileModel]) -> dict:
-    vector = shot_features(row)
-    raw_p50, raw_p90 = (model.predict(vector) for model in models)
+    boxes = feature_boxes(row)
+    raw_p50 = model_max(models[0], boxes)
+    raw_p90 = model_max(models[1], boxes)
     p50 = round(max(0.0, raw_p50), 6)
     p90 = round(max(0.0, raw_p50, raw_p90), 6)
     return {**row, "p50_minutes": p50, "p90_minutes": p90, "crossing_adjusted": raw_p90 < raw_p50}

@@ -7,7 +7,11 @@ from src.utils.csv_files import write_rows
 
 def report_detail(session, run_id, actor):
     run, review = get_run(session, run_id, actor)
-    return {**run_info(run, review), 'result': run.result, 'error': run.error,
+    result = run.result
+    if result is not None:
+        # The serialized trees are an internal snapshot for re-scheduling.
+        result = {key: value for key, value in result.items() if key != 'models'}
+    return {**run_info(run, review), 'result': result, 'error': run.error,
             'review': review_info(review) if review else None}
 
 
